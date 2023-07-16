@@ -1,6 +1,7 @@
 const User = require("../models/User");
 
 exports.getUser = (req, res, next) => {
+  console.log("USer method")
   User.findAll()
     .then((user) => {
       res.json(user);

@@ -36,11 +36,11 @@ const User = sequelize.define("user", {
   IsActive: {
     type: DataTypes.BOOLEAN,
   },
-  Deanery: {
-    type: DataTypes.STRING,
+  DeaneryId: {
+    type: DataTypes.INTEGER,
   },
-  Parish: {
-    type: DataTypes.STRING,
+  ParishId: {
+    type: DataTypes.INTEGER,
   },
   MembershipId: {
     type: DataTypes.STRING,
