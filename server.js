@@ -23,7 +23,7 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/roles", rolesRoutes);
 
 sequelize
-  .sync({alter: true})
+  .sync({ alter: true })
   .then((result) => {
     app.listen(PORT, () => {
       console.log(`App listening on port ${PORT}`);
