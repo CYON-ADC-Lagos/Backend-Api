@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db.config");
 
-const ApplicationSettings = sequelize.define("ApplicationSettings", {
+const Deanery = sequelize.define("Deanery", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -9,14 +9,19 @@ const ApplicationSettings = sequelize.define("ApplicationSettings", {
     primaryKey: true,
   },
 
-  key: {
+  name: {
     type: DataTypes.STRING,
   },
-
-  value: {
+  meetingDay: {
     type: DataTypes.STRING,
-    allowNull: false,
+  },
+  time: {
+    type: DataTypes.STRING,
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
 });
 
-module.exports = ApplicationSettings;
+module.exports = Deanery;

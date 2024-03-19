@@ -1,8 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-const cors = require('cors');
-const bodyParser = require('body-parser');
+const cors = require("cors");
+const bodyParser = require("body-parser");
 
 const sequelize = require("./src/config/db.config");
 const userRoutes = require("./src/routes/user.routes");
@@ -12,17 +12,16 @@ const deaneryRoutes = require("./src/routes/deanery.routes");
 const eventRoutes = require("./src/routes/event.route");
 const executiveRoutes = require("./src/routes/executive.route");
 
-
 const app = express();
 const PORT = 5000;
-app.use(cors())
+// app.use(require("body-parser"));
 
-// Increase the limit for JSON payloads
-app.use(bodyParser.json({ limit: '50mb' }));
-
-// Increase the limit for URL-encoded payloads
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.json());
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
 
 app.use(express.static(path.join(__dirname, "public")));
 

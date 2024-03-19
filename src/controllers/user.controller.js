@@ -1,8 +1,12 @@
-const jwt = require('jsonwebtoken');
-const User = require("../models/user.model");
-const Deanery = require("../models/deanery.model");
-const Parish = require("../models/parish.model");
-const bcrypt = require('bcrypt');
+const asyncHandler = require("../middlewares/async.js");
+const User = require("../models/User");
+
+const {
+  getAllUser,
+  register,
+  getUserById,
+} = require("../services/user.service.js");
+const sendResponse = require("../utils/sendResponse.js");
 
 const AUTH_SECRET_KEY = process.env.Token;
 
@@ -32,11 +36,19 @@ exports.getUsers = (req, res, next) => {
     })
     .catch((err) => res.status(400).json({ msg: "failed", error: err }));
 };
+exports.getAllUser = async function (req, res, next) {
+  const users = await getAllUser(req);
+  sendResponse(res, true, 200, users);
+};
 
-exports.createUser = (req, res, next) => {
-  console.log(req.body, "see");
-  console.log(req.file, "file");
-  const { firstName, lastName, email, password, phoneNumber, deaneryId, parishId, roleId } =
+exports.getUserById = async function (req, res, next) {
+  const { id } = req?.body;
+  const users = await getUserById({ req, id });
+  sendResponse(res, true, 200, users);
+};
+
+exports.register = (req, res, next) => {
+  const { FirstName, LastName, Email, Password, PhoneNumber, DeaneryId } =
     req?.body;
   if (
     !firstName ||
@@ -60,7 +72,7 @@ exports.createUser = (req, res, next) => {
           let hashedPassword;
           try {
             const salt = bcrypt.genSaltSync(10);
-            hashedPassword = bcrypt.hashSync(password, salt);
+            hashedPassword = bcrypt.hashSync(Password, salt);
           } catch (error) {
             throw error;
           }
