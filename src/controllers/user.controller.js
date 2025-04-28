@@ -13,24 +13,24 @@ const AUTH_SECRET_KEY = process.env.Token;
 exports.getUsers = (req, res, next) => {
   User.findAll({
     attributes: [
-      'id',
-      'firstName',
-      'lastName',
-      'phoneNumber',
-      'email',
-      'picture'
-      ],
+      "id",
+      "firstName",
+      "lastName",
+      "phoneNumber",
+      "email",
+      "picture",
+    ],
     include: [
       {
-      model: Deanery,
-      as: 'Deanery'
-    },
-    {
-      model: Parish,
-      as: 'Parish'
-    },
-  ],
-})
+        model: Deanery,
+        as: "Deanery",
+      },
+      {
+        model: Parish,
+        as: "Parish",
+      },
+    ],
+  })
     .then((user) => {
       res.status(200).json(user);
     })
@@ -94,42 +94,42 @@ exports.register = (req, res, next) => {
           })
             .then((user) => {
               jwt.sign(
-                { id: user.id,
-                  roleId: user.roleId },
+                { id: user.id, roleId: user.roleId },
                 AUTH_SECRET_KEY,
                 { expiresIn: "5h" },
                 (err, token) => {
                   User.findOne({
                     where: {
-                      id: user.id
+                      id: user.id,
                     },
-                    
                   })
                     .then((newUser) => {
-                      newUser['token'] = token;
-                       const response = {
+                      newUser["token"] = token;
+                      const response = {
                         token: token,
                         id: newUser.id,
                         firstName: newUser.firstName,
                         lastName: newUser.lastName,
                         email: newUser.email,
                         phoneNumber: newUser.phoneNumber,
-                      }
+                      };
                       if (newUser.deanery) {
                         response.deanery = newUser.Deanery.name;
                       }
                       if (newUser.Parish) {
                         response.parish = newUser.Parish.name;
                       }
-                      res.status(200).json(response)
+                      res.status(200).json(response);
                     })
                     .catch((err) => {
-                      res.status(400).json({ msg: err.message})
-                    })
+                      res.status(400).json({ msg: err.message });
+                    });
                 }
               );
             })
-            .catch((err) => res.status(400).json({ msg: err.message || "Not created" }));
+            .catch((err) =>
+              res.status(400).json({ msg: err.message || "Not created" })
+            );
         }
       })
 
@@ -139,55 +139,52 @@ exports.register = (req, res, next) => {
   }
 };
 
-
 exports.loginUser = (req, res, next) => {
   console.log(req.body, "see");
-  const { email, password } =
-  req?.body;
-  if ( email && password) {
+  const { email, password } = req?.body;
+  if (email && password) {
     User.findOne({
       where: {
         email,
-      }
-    })
-      .then((user) => {
-        if (user) {
-          let correctPassword;
-          correctPassword = bcrypt.compareSync(password, user.password);
-          if (correctPassword) {
-            jwt.sign(
-              { id: user.id,
-                roleId: user.roleId},
-              AUTH_SECRET_KEY,
-              { expiresIn: "5h" },
-              (err, token) => {
-                const response = {
-                  token: token,
-                  id: user.id,
-                  firstName: user.firstName,
-                  lastName: user.lastName,
-                  email: user.email,
-                  phoneNumber: user.phoneNumber,
-                  deanery: user.Deanery,
-                  parish: user.Parish,
-                }
-                if (user.Deanery) {
-                  response.deanery = user.Deanery.name;
-                }
-                if (user.Parish) {
-                  response.parish = user.Parish.name;
-                }
-                res.status(200).json(response);
+      },
+    }).then((user) => {
+      if (user) {
+        let correctPassword;
+        correctPassword = bcrypt.compareSync(password, user.password);
+        if (correctPassword) {
+          jwt.sign(
+            { id: user.id, roleId: user.roleId },
+            AUTH_SECRET_KEY,
+            { expiresIn: "5h" },
+            (err, token) => {
+              const response = {
+                token: token,
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+                deanery: user.Deanery,
+                parish: user.Parish,
+              };
+              if (user.Deanery) {
+                response.deanery = user.Deanery.name;
               }
-            );
-          } else {
-            res.status(401).json({ msg: "Incorrect Password"})
-          }
+              if (user.Parish) {
+                response.parish = user.Parish.name;
+              }
+              console.log(response);
+              res.status(200).json(response);
+            }
+          );
         } else {
-          res.status(400).json({ msg: "User does not Exist"})
+          res.status(401).json({ msg: "Incorrect Password" });
         }
-  })    
+      } else {
+        res.status(400).json({ msg: "User does not Exist" });
+      }
+    });
   } else {
     res.status(400).json({ msg: "Bad Request" });
   }
-}
+};
