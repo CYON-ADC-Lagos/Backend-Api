@@ -49,10 +49,9 @@ const crypto = require("crypto");
 const multer = require("multer");
 const ErrorResponse = require("../utils/errorResponse");
 
-const UPLOAD_ROOT =
-  process.env.NODE_ENV === "production"
-    ? "/tmp/uploads"
-    : path.resolve(__dirname, "..", "..", "uploads");
+const UPLOAD_ROOT = process.env.VERCEL
+  ? "/tmp/uploads"
+  : path.resolve(__dirname, "..", "..", "uploads");
 
 if (!fs.existsSync(UPLOAD_ROOT)) {
   fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
