@@ -49,13 +49,8 @@ const crypto = require("crypto");
 const multer = require("multer");
 const ErrorResponse = require("../utils/errorResponse");
 
-const UPLOAD_ROOT = process.env.VERCEL
-  ? "/tmp/uploads"
-  : path.resolve(__dirname, "..", "..", "uploads");
-
-if (!fs.existsSync(UPLOAD_ROOT)) {
-  fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
-}
+// /tmp is writable on Vercel, Mac, and Linux — safe everywhere
+const UPLOAD_ROOT = "/tmp/uploads";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -67,7 +62,14 @@ const ALLOWED_MIME = new Set([
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_ROOT),
+  destination: (_req, _file, cb) => {
+    // mkdir is lazy — only runs when a file is actually uploaded
+    // not at app startup, so it won't crash Vercel on boot
+    if (!fs.existsSync(UPLOAD_ROOT)) {
+      fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
+    }
+    cb(null, UPLOAD_ROOT);
+  },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase().slice(0, 10);
     const safeName = crypto.randomBytes(16).toString("hex");
