@@ -1,3 +1,4 @@
+require("pg");
 const Sequelize = require("sequelize");
 
 const dialect = process.env.DB_DIALECT || "mysql";

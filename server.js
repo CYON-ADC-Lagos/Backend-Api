@@ -1,3 +1,4 @@
+require("pg");
 require("dotenv").config();
 
 const express = require("express");
@@ -81,7 +82,7 @@ app.use(
       return cb(null, false);
     },
     credentials: true,
-  })
+  }),
 );
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -93,7 +94,9 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(UPLOAD_ROOT));
 
 app.get("/health", (_req, res) =>
-  res.status(200).json({ success: true, status: "ok", time: new Date().toISOString() })
+  res
+    .status(200)
+    .json({ success: true, status: "ok", time: new Date().toISOString() }),
 );
 
 try {
