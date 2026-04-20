@@ -42,13 +42,13 @@
 
 // module.exports = upload;
 // module.exports.UPLOAD_ROOT = UPLOAD_ROOT;
+
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const multer = require("multer");
 const ErrorResponse = require("../utils/errorResponse");
 
-// /tmp is writable on Vercel, Mac, and Linux — safe everywhere
 const UPLOAD_ROOT = "/tmp/uploads";
 
 const ALLOWED_MIME = new Set([
@@ -58,12 +58,10 @@ const ALLOWED_MIME = new Set([
   "image/gif",
   "application/pdf",
 ]);
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_BYTES = 5 * 1024 * 1024;
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    // mkdir is lazy — only runs when a file is actually uploaded
-    // not at app startup, so it won't crash Vercel on boot
     if (!fs.existsSync(UPLOAD_ROOT)) {
       fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
     }
