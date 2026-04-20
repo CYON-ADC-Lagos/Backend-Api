@@ -5,9 +5,20 @@ const dialect = process.env.DB_DIALECT || "mysql";
 let sequelize;
 
 if (dialect === "sqlite") {
+  // sequelize = new Sequelize({
+  //   dialect: "sqlite",
+  //   storage: process.env.DB_STORAGE || ":memory:",
+  //   logging: false,
+  // });
+
   sequelize = new Sequelize({
-    dialect: "sqlite",
-    storage: process.env.DB_STORAGE || ":memory:",
+    dialect: "postgres",
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, // required for Neon
+      },
+    },
     logging: false,
   });
 } else {
@@ -19,7 +30,7 @@ if (dialect === "sqlite") {
 
   if (!name || !user || !password || !host) {
     throw new Error(
-      "Database env vars missing. Required: DB_NAME, DB_USER, DB_PASSWORD, DB_HOST. See .env.example."
+      "Database env vars missing. Required: DB_NAME, DB_USER, DB_PASSWORD, DB_HOST. See .env.example.",
     );
   }
 
