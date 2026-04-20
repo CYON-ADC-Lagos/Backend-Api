@@ -55,6 +55,9 @@ node_modules/
 jspm_packages/
 src/uploads/
 
+# Local SQLite database
+.data/
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

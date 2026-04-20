@@ -1,79 +1,62 @@
+const asyncHandler = require("../middlewares/async");
+const ErrorResponse = require("../utils/errorResponse");
+const sendResponse = require("../utils/sendResponse");
+const { parsePagination, buildPaginated } = require("../utils/pagination");
 const Event = require("../models/event.model");
-const Role = require("../models/role.model");
-const jwt = require('jsonwebtoken');
+const Deanery = require("../models/deanery.model");
 
-const AUTH_SECRET_KEY = process.env.Token;
+const ADC_MARKER = "Lagos";
 
-exports.getEvents = (req, res, next) => {
-  Event.findAll()
-    .then((events) => {
-      res.status(200).json(events);
-    })
-    .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-};
+exports.getEvents = asyncHandler(async (req, res) => {
+  const { page, limit, offset } = parsePagination(req.query);
+  const where = {};
+  if (req.query.deaneryId) where.deaneryId = req.query.deaneryId;
+  const result = await Event.findAndCountAll({
+    where,
+    limit,
+    offset,
+    order: [["date", "DESC"]],
+    include: [{ model: Deanery, attributes: ["id", "name"] }],
+  });
+  return sendResponse(res, 200, buildPaginated(result, { page, limit }));
+});
 
+exports.getEvent = asyncHandler(async (req, res, next) => {
+  const event = await Event.findByPk(req.params.id, {
+    include: [{ model: Deanery, attributes: ["id", "name"] }],
+  });
+  if (!event) return next(new ErrorResponse("Event not found", 404));
+  return sendResponse(res, 200, event);
+});
 
-exports.createEvent = (req, res, next) => {
-  console.log(req.body, "see");
-  const { name, description, date, time, venue, deaneryId} = req?.body;
-  let token = req.headers.token;
-  let role = "0";
-  if ( name && date ) {
-    jwt.verify(token, AUTH_SECRET_KEY, (err, decoded) => {
-      if (!(err) && decoded) {
-        const { id, roleId } = decoded;
-        if (roleId) {
-          role = roleId;
-        }
-      } 
-    });
-    Role.findOne({
-      where: {
-        id: role
-      }
-    })
-      .then((roleExists) => {
-        if (roleExists && roleExists.name !== "Member") {
-          let adcId;
-          if (!deaneryId) {
-            adcId = "Lagos";
-          }
-          let bannerImage;
-          if (req.file) {
-            bannerImage = req.file.path;
-          }
-          Event.create({
-              name,
-              description,
-              date,
-              time,
-              deaneryId,
-              venue,
-              adcId,
-              bannerImage,
-          })
-            .then((event) => {
-              res.status(200).json(event)
-            })
-            .catch((err) => {
-              res.status(400).json({ msg: err.message || "Not created" })
-            })
-        } else {
-        res.status(403).json({ msg: "Action Not Allowed" });
-      }
-    })
-  }
-}
+exports.getAdcEvents = asyncHandler(async (_req, res) => {
+  const events = await Event.findAll({
+    where: { adcId: ADC_MARKER },
+    order: [["date", "DESC"]],
+  });
+  return sendResponse(res, 200, events);
+});
 
-exports.getAdcEvents = (req, res, next) => {
-  console.log(req.params);
-  Event.findAll({
-    where: {
-      adcId: "Lagos"
-    }
-  })
-    .then((events) => {
-   res.status(200).json(events);
-  })
-  .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-}
+exports.createEvent = asyncHandler(async (req, res) => {
+  const data = { ...req.body };
+  if (!data.deaneryId) data.adcId = ADC_MARKER;
+  if (req.file) data.bannerImage = req.file.filename;
+  const event = await Event.create(data);
+  return sendResponse(res, 201, event, "Event created");
+});
+
+exports.updateEvent = asyncHandler(async (req, res, next) => {
+  const event = await Event.findByPk(req.params.id);
+  if (!event) return next(new ErrorResponse("Event not found", 404));
+  const updates = { ...req.body };
+  if (req.file) updates.bannerImage = req.file.filename;
+  await event.update(updates);
+  return sendResponse(res, 200, event, "Event updated");
+});
+
+exports.deleteEvent = asyncHandler(async (req, res, next) => {
+  const event = await Event.findByPk(req.params.id);
+  if (!event) return next(new ErrorResponse("Event not found", 404));
+  await event.destroy();
+  return sendResponse(res, 200, null, "Event deleted");
+});

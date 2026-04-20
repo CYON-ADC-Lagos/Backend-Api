@@ -1,32 +1,22 @@
-
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db.config");
 
-
 const Role = sequelize.define("Role", {
   id: {
-<<<<<<< HEAD:src/models/role.model.js
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
-=======
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
->>>>>>> a870fe1 (updated file):src/models/Role.js
     allowNull: false,
     primaryKey: true,
   },
-
   name: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
   },
-
   description: {
     type: DataTypes.STRING,
     allowNull: true,
   },
 });
-
 
 module.exports = Role;

@@ -1,44 +1,23 @@
+const asyncHandler = require("../middlewares/async");
+const ErrorResponse = require("../utils/errorResponse");
+const sendResponse = require("../utils/sendResponse");
 const Role = require("../models/role.model");
 
+exports.getRoles = asyncHandler(async (_req, res) => {
+  const roles = await Role.findAll({ order: [["name", "ASC"]] });
+  return sendResponse(res, 200, roles);
+});
 
-exports.getRoles = (req, res, next) => {
-  Role.findAll()
-    .then((role) => {
-      res.json(role);
-    })
-    .catch((err) => res.json({ msg: "failed", error: err }));
-};
+exports.createRole = asyncHandler(async (req, res, next) => {
+  const existing = await Role.findOne({ where: { name: req.body.name } });
+  if (existing) return next(new ErrorResponse("Role already exists", 409));
+  const role = await Role.create(req.body);
+  return sendResponse(res, 201, role, "Role created");
+});
 
-
-exports.createRole = (req, res, next) => {
-  const { name, description } =
-  req?.body;
-  if ( name ) {
-    Role.findOne({
-        where: {
-            name,
-        },
-    })
-    .then((nameExists) => {
-        if (nameExists) {
-            res.status(400).json({ msg: "Role already exists" });
-          } else {
-            Role.create({
-                name,
-                description,
-            })
-              .then((role) => {
-                res.status(200).json(role)
-              })
-              .catch((err) => {
-                res.status(400).json({ msg: err.message || "Not created" })
-              })
-          }
-    })
-    .catch((err) => {
-        console.log(err);
-      });
-  } else {
-    res.status(400).json({ msg: "Bad Request" });
-  }
-}
+exports.deleteRole = asyncHandler(async (req, res, next) => {
+  const role = await Role.findByPk(req.params.id);
+  if (!role) return next(new ErrorResponse("Role not found", 404));
+  await role.destroy();
+  return sendResponse(res, 200, null, "Role deleted");
+});

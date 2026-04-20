@@ -1,27 +1,26 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db.config");
 
-const Deanery = sequelize.define("Deanery", {
+const GalleryItem = sequelize.define("GalleryItem", {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     allowNull: false,
     primaryKey: true,
   },
-
-  name: {
+  title: {
     type: DataTypes.STRING,
   },
-  meetingDay: {
+  caption: {
     type: DataTypes.STRING,
   },
-  time: {
+  album: {
     type: DataTypes.STRING,
   },
-  email: {
+  image: {
     type: DataTypes.STRING,
-    allowNull: true,
+    allowNull: false,
   },
 });
 
-module.exports = Deanery;
+module.exports = GalleryItem;

@@ -1,7 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db.config");
-const Deanery = require('./deanery.model');
-
+const Deanery = require("./deanery.model");
 
 const Parish = sequelize.define("Parish", {
   id: {
@@ -28,7 +27,11 @@ const Parish = sequelize.define("Parish", {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    required: true,
+  },
+  hasPaid: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   deaneryId: {
     type: DataTypes.UUID,
@@ -36,7 +39,7 @@ const Parish = sequelize.define("Parish", {
   },
 });
 
-Deanery.hasMany(Parish, { foreignKey: 'deaneryId' });
-Parish.belongsTo(Deanery, { foreignKey: 'deaneryId' });
+Deanery.hasMany(Parish, { foreignKey: "deaneryId" });
+Parish.belongsTo(Deanery, { foreignKey: "deaneryId" });
 
 module.exports = Parish;

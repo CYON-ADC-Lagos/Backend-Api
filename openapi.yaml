@@ -1,0 +1,1332 @@
+openapi: 3.0.3
+info:
+  title: CYON ADC Lagos API
+  description: |
+    Backend API for the CYON Archdiocese of Lagos frontend.
+
+    **Seeded credentials for local dev** (`npm run seed:fixtures`):
+    - Admin: `admin@cyonadclagos.org` / `LocalAdmin!234`
+    - All others: `Password!234` (e.g. `exec.lekki@cyonadclagos.org`)
+
+    **Auth:** Send `Authorization: Bearer <token>` from `/user/login`.
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: Base path (same origin)
+  - url: http://127.0.0.1:5000/api/v1
+    description: Local dev
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Roles
+  - name: Deaneries
+  - name: Parishes
+  - name: Events
+  - name: Executives
+  - name: Chaplains
+  - name: AYD
+  - name: Delegates
+  - name: Payments
+  - name: News
+  - name: Gallery
+  - name: Feedback
+  - name: Policies
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: "OK" }
+        count: { type: integer, example: 6 }
+        data: {}
+
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string, example: "Invalid credentials" }
+
+    Paginated:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {}
+        total: { type: integer, example: 42 }
+        page: { type: integer, example: 1 }
+        pageSize: { type: integer, example: 20 }
+        pages: { type: integer, example: 3 }
+
+    Role:
+      type: object
+      example:
+        id: "a1f3d8e2-1c2b-4f8e-9d10-0f8a4b5e6c77"
+        name: "Admin"
+        description: "Full system access"
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, enum: [Admin, Executive, Chaplain, Member] }
+        description: { type: string }
+
+    User:
+      type: object
+      example:
+        id: "0d8a3c11-7b22-4f7e-9b66-2c63a8e4ec21"
+        firstName: "Local"
+        lastName: "Admin"
+        email: "admin@cyonadclagos.org"
+        phoneNumber: "08000000000"
+        roleId: "a1f3d8e2-1c2b-4f8e-9d10-0f8a4b5e6c77"
+        deaneryId: null
+        parishId: null
+        picture: null
+        isActive: true
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        roleId: { type: string, format: uuid }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        parishId: { type: string, format: uuid, nullable: true }
+        picture: { type: string, nullable: true }
+        isActive: { type: boolean }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      example:
+        email: "admin@cyonadclagos.org"
+        password: "LocalAdmin!234"
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginResponse:
+      type: object
+      example:
+        success: true
+        message: "Login successful"
+        data:
+          token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...."
+          user:
+            id: "0d8a3c11-7b22-4f7e-9b66-2c63a8e4ec21"
+            firstName: "Local"
+            lastName: "Admin"
+            email: "admin@cyonadclagos.org"
+            roleId: "a1f3d8e2-1c2b-4f8e-9d10-0f8a4b5e6c77"
+            Role: { id: "a1f3d8e2-1c2b-4f8e-9d10-0f8a4b5e6c77", name: "Admin" }
+
+    RegisterRequest:
+      type: object
+      required: [firstName, lastName, email, password, phoneNumber, roleId]
+      example:
+        firstName: "Ada"
+        lastName: "Obi"
+        email: "ada.obi@example.org"
+        password: "StrongPass1!"
+        phoneNumber: "08012345678"
+        roleId: "REPLACE_WITH_MEMBER_ROLE_ID"
+        deaneryId: null
+        parishId: null
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        phoneNumber: { type: string }
+        roleId: { type: string, format: uuid }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        parishId: { type: string, format: uuid, nullable: true }
+        picture: { type: string, format: binary, nullable: true }
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      example: { email: "ada.obi@example.org" }
+      properties:
+        email: { type: string, format: email }
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      example:
+        token: "a1b2c3d4e5f6a7b8c9d0"
+        password: "BrandNewPass1!"
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 8 }
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      example:
+        currentPassword: "LocalAdmin!234"
+        newPassword: "EvenStronger!9"
+      properties:
+        currentPassword: { type: string }
+        newPassword: { type: string, minLength: 8 }
+
+    Deanery:
+      type: object
+      example:
+        id: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d"
+        name: "Festac"
+        meetingDay: "Last Sunday"
+        time: "14:00:00"
+        email: "festac@cyonadclagos.org"
+        phoneNumber: "08011111003"
+        banner: null
+        instagram: "https://instagram.com/cyonfestac"
+        facebook: null
+        twitter: null
+        youtube: null
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        meetingDay: { type: string, nullable: true }
+        time: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        phoneNumber: { type: string, nullable: true }
+        banner: { type: string, nullable: true }
+        instagram: { type: string, nullable: true }
+        facebook: { type: string, nullable: true }
+        twitter: { type: string, nullable: true }
+        youtube: { type: string, nullable: true }
+
+    DeaneryCreateRequest:
+      type: object
+      required: [name]
+      example:
+        name: "Surulere"
+        email: "surulere@cyonadclagos.org"
+        meetingDay: "Second Sunday"
+        time: "14:00:00"
+        phoneNumber: "08099990001"
+        facebook: "https://facebook.com/cyonsurulere"
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        meetingDay: { type: string }
+        time: { type: string }
+        phoneNumber: { type: string }
+        facebook: { type: string }
+        instagram: { type: string }
+        twitter: { type: string }
+        youtube: { type: string }
+
+    Parish:
+      type: object
+      example:
+        id: "b1780aa0-792d-4c8b-868c-f3cee35a7357"
+        name: "Assumption Parish, Festac"
+        email: "assumption.festac@cyonadclagos.org"
+        location: "Festac Town"
+        meetingDay: "Last Sunday"
+        time: "14:00:00"
+        hasPaid: true
+        deaneryId: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d"
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        location: { type: string, nullable: true }
+        meetingDay: { type: string, nullable: true }
+        time: { type: string, nullable: true }
+        hasPaid: { type: boolean }
+        deaneryId: { type: string, format: uuid }
+
+    ParishCreateRequest:
+      type: object
+      required: [name, email, deaneryId]
+      example:
+        name: "Holy Cross Cathedral, Lagos"
+        email: "holycross@cyonadclagos.org"
+        location: "Lagos Island"
+        meetingDay: "First Sunday"
+        time: "14:00:00"
+        deaneryId: "REPLACE_WITH_DEANERY_ID"
+        hasPaid: false
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        location: { type: string }
+        meetingDay: { type: string }
+        time: { type: string }
+        deaneryId: { type: string, format: uuid }
+        hasPaid: { type: boolean }
+
+    Event:
+      type: object
+      example:
+        id: "e1d43a72-4d5f-4c6b-9cb0-c16012af54b4"
+        name: "Archdiocesan Youth Day 2026"
+        description: "Annual gathering of CYON delegates across the Archdiocese of Lagos."
+        date: "2026-08-15T09:00:00.000Z"
+        time: "09:00:00"
+        venue: "Archbishop's Hall, Ikeja"
+        bannerImage: null
+        deaneryId: null
+        adcId: "Lagos"
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        date: { type: string, format: date-time }
+        time: { type: string }
+        venue: { type: string, nullable: true }
+        bannerImage: { type: string, nullable: true }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        adcId: { type: string, nullable: true }
+
+    EventCreateRequest:
+      type: object
+      required: [name, description, date, time]
+      example:
+        name: "Youth Vigil Night"
+        description: "All-night vigil for young adults."
+        date: "2026-06-14T20:00:00.000Z"
+        time: "20:00:00"
+        venue: "St. Leo's, Ikeja"
+        deaneryId: null
+      properties:
+        name: { type: string }
+        description: { type: string }
+        date: { type: string, format: date-time }
+        time: { type: string }
+        venue: { type: string }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        bannerImage: { type: string, format: binary, nullable: true }
+
+    Executive:
+      type: object
+      example:
+        id: "6cfbb4fb-71a8-4a90-95c4-9b7a4a9f5010"
+        firstName: "Chukwuemeka"
+        lastName: "Obi"
+        title: "Mr."
+        position: "President, CYON Lagos ADC"
+        email: "president@cyonadclagos.org"
+        phoneNumber: null
+        picture: null
+        order: 2
+        adcId: "Lagos"
+        deaneryId: null
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        title: { type: string, nullable: true }
+        position: { type: string }
+        email: { type: string, format: email, nullable: true }
+        phoneNumber: { type: string, nullable: true }
+        picture: { type: string, nullable: true }
+        order: { type: integer }
+        adcId: { type: string, nullable: true }
+        deaneryId: { type: string, format: uuid, nullable: true }
+
+    ExecutiveCreateRequest:
+      type: object
+      required: [firstName, lastName, position]
+      example:
+        firstName: "Chiamaka"
+        lastName: "Okonkwo"
+        title: "Ms."
+        position: "Director of Media"
+        order: 13
+        deaneryId: null
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        title: { type: string }
+        position: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        order: { type: integer }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        picture: { type: string, format: binary, nullable: true }
+
+    Chaplain:
+      type: object
+      example:
+        id: "a8e0b512-8e35-4b08-93bb-30a59dd0f3a1"
+        firstName: "Michael"
+        lastName: "Obi"
+        title: "Very Rev. Fr."
+        email: "chaplain.festac@cyonadclagos.org"
+        phoneNumber: "08044400003"
+        image: null
+        deaneryId: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d"
+        parishId: null
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        title: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        phoneNumber: { type: string, nullable: true }
+        image: { type: string, nullable: true }
+        deaneryId: { type: string, format: uuid, nullable: true }
+        parishId: { type: string, format: uuid, nullable: true }
+
+    Ayd:
+      type: object
+      example:
+        id: "2c0a88b1-dd65-4ae0-8570-06df1997bde0"
+        theme: "Arise, Shine — AYD 2026"
+        venue: "Archbishop's Hall, Ikeja"
+        startDate: "2026-08-15T09:00:00.000Z"
+        endDate: "2026-08-17T18:00:00.000Z"
+        description: "Three days of worship, workshops and fellowship."
+        isActive: true
+        totalDelegates: 18
+        totalPaidParish: 6
+      properties:
+        id: { type: string, format: uuid }
+        theme: { type: string }
+        venue: { type: string, nullable: true }
+        startDate: { type: string, format: date-time, nullable: true }
+        endDate: { type: string, format: date-time, nullable: true }
+        description: { type: string, nullable: true }
+        isActive: { type: boolean }
+        totalDelegates: { type: integer }
+        totalPaidParish: { type: integer }
+
+    AydCreateRequest:
+      type: object
+      required: [theme]
+      example:
+        theme: "Be Bold, Be Catholic — AYD 2027"
+        venue: "Festac Town"
+        startDate: "2027-08-14T09:00:00.000Z"
+        endDate: "2027-08-16T18:00:00.000Z"
+        description: "The 2027 Archdiocesan Youth Day."
+        isActive: false
+      properties:
+        theme: { type: string }
+        venue: { type: string }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        description: { type: string }
+        isActive: { type: boolean }
+
+    Delegate:
+      type: object
+      example:
+        id: "80f9b764-6da1-4e42-b7dc-3459dfcb22a2"
+        firstName: "Obi"
+        lastName: "Okeke"
+        email: "obi.okeke@example.org"
+        phoneNumber: "08051000000"
+        gender: "Male"
+        position: "Parish President"
+        aydId: "2c0a88b1-dd65-4ae0-8570-06df1997bde0"
+        deaneryId: "8ef2de60-0234-403e-bd7f-30c47583dfa9"
+        parishId: "a889c822-f4b9-49fc-8821-77363e024715"
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        gender: { type: string, enum: [Male, Female] }
+        position: { type: string, nullable: true }
+        aydId: { type: string, format: uuid }
+        deaneryId: { type: string, format: uuid }
+        parishId: { type: string, format: uuid }
+
+    DelegateCreateRequest:
+      type: object
+      required: [firstName, lastName, email, phoneNumber, gender, aydId, deaneryId, parishId]
+      example:
+        firstName: "Adaeze"
+        lastName: "Okafor"
+        email: "adaeze.okafor@example.org"
+        phoneNumber: "08098765432"
+        gender: "Female"
+        position: "Parish Secretary"
+        aydId: "REPLACE_WITH_ACTIVE_AYD_ID"
+        deaneryId: "REPLACE_WITH_DEANERY_ID"
+        parishId: "REPLACE_WITH_PAID_PARISH_ID"
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        gender: { type: string, enum: [Male, Female] }
+        position: { type: string }
+        aydId: { type: string, format: uuid }
+        deaneryId: { type: string, format: uuid }
+        parishId: { type: string, format: uuid }
+
+    Payment:
+      type: object
+      example:
+        id: "f5d0a91e-54ca-48c5-a7a1-3c9bcc1c7de2"
+        amount: "50000.00"
+        currency: "NGN"
+        reference: "AYD26-0001"
+        method: "transfer"
+        status: "confirmed"
+        paidAt: "2026-04-15T12:00:00.000Z"
+        note: "AYD 2026 parish contribution"
+        parishId: "a889c822-f4b9-49fc-8821-77363e024715"
+        aydId: "2c0a88b1-dd65-4ae0-8570-06df1997bde0"
+      properties:
+        id: { type: string, format: uuid }
+        amount: { type: number }
+        currency: { type: string }
+        reference: { type: string }
+        method: { type: string, enum: [cash, transfer, card, pos, other] }
+        status: { type: string, enum: [pending, confirmed, reversed] }
+        paidAt: { type: string, format: date-time }
+        note: { type: string, nullable: true }
+        parishId: { type: string, format: uuid }
+        aydId: { type: string, format: uuid, nullable: true }
+
+    PaymentCreateRequest:
+      type: object
+      required: [amount, reference]
+      example:
+        amount: 50000
+        currency: "NGN"
+        reference: "AYD26-0007"
+        method: "transfer"
+        status: "confirmed"
+        note: "AYD 2026 parish contribution"
+        aydId: "REPLACE_WITH_AYD_ID"
+      properties:
+        amount: { type: number }
+        currency: { type: string, default: "NGN" }
+        reference: { type: string }
+        method: { type: string, enum: [cash, transfer, card, pos, other] }
+        status: { type: string, enum: [pending, confirmed, reversed] }
+        note: { type: string }
+        aydId: { type: string, format: uuid }
+
+    News:
+      type: object
+      example:
+        id: "36b5a8a5-cf93-49d6-a0e5-3f2e7a7b0d11"
+        title: "CYON Lagos Commissions New Youth Welfare Initiative"
+        summary: "A pilot programme to support indigent youth across the archdiocese."
+        body: "The Catholic Youth Organisation of Nigeria (CYON) Archdiocese of Lagos today commissioned..."
+        image: null
+        source: "CYON Media Desk"
+        externalUrl: "https://www.cyonadclagos.org/news/operation-hope"
+        publishedAt: "2026-03-05T10:00:00.000Z"
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        summary: { type: string, nullable: true }
+        body: { type: string }
+        image: { type: string, nullable: true }
+        source: { type: string, nullable: true }
+        externalUrl: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time }
+
+    NewsCreateRequest:
+      type: object
+      required: [title, body]
+      example:
+        title: "AYD 2026 Delegates Kick Off Workshop Series"
+        summary: "Delegates arrived at the Archbishop's Hall for the opening workshop."
+        body: "Delegates from 42 parishes across Lagos arrived at the Archbishop's Hall..."
+        source: "CYON Media Desk"
+        externalUrl: "https://www.cyonadclagos.org/news/ayd2026-kickoff"
+        publishedAt: "2026-08-15T09:00:00.000Z"
+      properties:
+        title: { type: string }
+        summary: { type: string }
+        body: { type: string }
+        source: { type: string }
+        externalUrl: { type: string }
+        publishedAt: { type: string, format: date-time }
+        image: { type: string, format: binary, nullable: true }
+
+    GalleryItem:
+      type: object
+      example:
+        id: "4f7ab8e0-6ad4-4f0f-80a9-8c1b5a6df5bd"
+        title: "AYD 2025 Opening Ceremony"
+        caption: "Delegates during the opening mass."
+        album: "AYD 2025"
+        image: "ayd2025-opening.jpg"
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        caption: { type: string, nullable: true }
+        album: { type: string, nullable: true }
+        image: { type: string }
+
+    Feedback:
+      type: object
+      example:
+        id: "c2a5ef81-4e3d-4a4c-b3b8-0d21a4a8ae11"
+        name: "Ngozi A."
+        email: "ngozi@example.com"
+        phoneNumber: null
+        subject: "Website feedback"
+        message: "Love the new site! Could we get an RSS feed for news?"
+        status: "new"
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        email: { type: string, format: email }
+        phoneNumber: { type: string, nullable: true }
+        subject: { type: string }
+        message: { type: string }
+        status: { type: string, enum: [new, in_progress, resolved] }
+
+    FeedbackCreateRequest:
+      type: object
+      required: [email, subject, message]
+      example:
+        name: "John Parishioner"
+        email: "john.parishioner@example.org"
+        phoneNumber: "08051112233"
+        subject: "AYD registration question"
+        message: "How can I confirm my parish is eligible to send delegates?"
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        subject: { type: string }
+        message: { type: string }
+
+    Policy:
+      type: object
+      example:
+        id: "7b2c5a99-cd10-4b1a-a1cb-6d17c2e0c1aa"
+        title: "CYON Lagos Code of Conduct"
+        slug: "code-of-conduct"
+        body: "All members of the Catholic Youth Organisation of Nigeria..."
+        isPublished: true
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        body: { type: string }
+        isPublished: { type: boolean }
+
+    PolicyCreateRequest:
+      type: object
+      required: [title, slug, body]
+      example:
+        title: "Social Media Usage Policy"
+        slug: "social-media-policy"
+        body: "This policy describes how CYON members should conduct themselves online..."
+        isPublished: true
+      properties:
+        title: { type: string }
+        slug: { type: string, pattern: "^[a-z0-9-]+$" }
+        body: { type: string }
+        isPublished: { type: boolean }
+
+paths:
+  # ---------- AUTH ----------
+  /user/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              example:
+                success: true
+                message: "Registered"
+                data:
+                  token: "eyJhbGciOiJI...."
+                  user: { $ref: '#/components/schemas/User/example' }
+        "409": { description: Email already registered }
+
+  /user/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        "401": { description: Invalid credentials }
+
+  /user/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Initiate password reset (always returns 200)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForgotPasswordRequest' }
+      responses:
+        "200": { description: Reset token issued if email exists }
+
+  /user/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+      responses:
+        "200": { description: OK }
+        "400": { description: Invalid or expired token }
+
+  /user/change-password:
+    post:
+      tags: [Auth]
+      summary: Change own password
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        "200": { description: OK }
+
+  # ---------- USERS ----------
+  /user:
+    get:
+      tags: [Users]
+      summary: List users (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, example: 1 } }
+        - { name: limit, in: query, schema: { type: integer, example: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items: [ { id: "0d8a3c11-7b22-4f7e-9b66-2c63a8e4ec21", firstName: "Local", lastName: "Admin", email: "admin@cyonadclagos.org" } ]
+                  total: 39
+                  page: 1
+                  pageSize: 20
+                  pages: 2
+  /user/me:
+    get:
+      tags: [Users]
+      summary: Current user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { success: true, data: { $ref: '#/components/schemas/User/example' } }
+  /user/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid, example: "0d8a3c11-7b22-4f7e-9b66-2c63a8e4ec21" }
+    get:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    put:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                firstName: "Ada"
+                phoneNumber: "08012345678"
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- ROLES ----------
+  /role:
+    get:
+      tags: [Roles]
+      summary: List roles
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  - { id: "a1f3d8e2-1c2b-4f8e-9d10-0f8a4b5e6c77", name: "Admin", description: "Full system access" }
+                  - { id: "b2e4f921-2d3c-5f90-ae11-1f9a5c6f7d88", name: "Member", description: "Standard member" }
+    post:
+      tags: [Roles]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              example: { name: "Coordinator", description: "Deanery coordinator" }
+      responses: { "201": { description: Created } }
+
+  # ---------- DEANERIES ----------
+  /deanery:
+    get:
+      tags: [Deaneries]
+      summary: List deaneries
+      parameters:
+        - { name: page, in: query, schema: { type: integer, example: 1 } }
+        - { name: limit, in: query, schema: { type: integer, example: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items:
+                    - { id: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d", name: "Festac", email: "festac@cyonadclagos.org", meetingDay: "Last Sunday" }
+                    - { id: "4b3aef2a-3c37-4a71-bbe9-cf8e78ac1b23", name: "Lekki",  email: "lekki@cyonadclagos.org",  meetingDay: "Second Sunday" }
+                  total: 6
+                  page: 1
+                  pageSize: 20
+                  pages: 1
+    post:
+      tags: [Deaneries]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeaneryCreateRequest' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/DeaneryCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /deanery/{deaneryId}:
+    parameters:
+      - name: deaneryId
+        in: path
+        required: true
+        schema: { type: string, format: uuid, example: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d" }
+    get:
+      tags: [Deaneries]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { success: true, data: { $ref: '#/components/schemas/Deanery/example' } }
+    put:
+      tags: [Deaneries]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              example: { phoneNumber: "08099990005", facebook: "https://facebook.com/cyonfestac" }
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Deaneries]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  /deanery/{deaneryId}/parishes:
+    parameters:
+      - { name: deaneryId, in: path, required: true, schema: { type: string, format: uuid, example: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d" } }
+    get:
+      tags: [Deaneries]
+      summary: Parishes in this deanery
+      responses: { "200": { description: OK } }
+
+  /deanery/{deaneryId}/paid-parishes:
+    parameters:
+      - { name: deaneryId, in: path, required: true, schema: { type: string, format: uuid, example: "1e6a2d52-bd37-4a48-9d6d-76ff70ce1b4d" } }
+    get:
+      tags: [Deaneries]
+      summary: Parishes in good financial standing (used by AYD registration modal)
+      responses: { "200": { description: OK } }
+
+  /deanery/{deaneryId}/users:
+    parameters:
+      - { name: deaneryId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Deaneries]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  /deanery/{deaneryId}/events:
+    parameters:
+      - { name: deaneryId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Deaneries]
+      responses: { "200": { description: OK } }
+
+  /deanery/{deaneryId}/executives:
+    parameters:
+      - { name: deaneryId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Deaneries]
+      responses: { "200": { description: OK } }
+
+  # ---------- PARISHES ----------
+  /parish:
+    get:
+      tags: [Parishes]
+      summary: List parishes (filter by deaneryId, hasPaid)
+      parameters:
+        - { name: deaneryId, in: query, schema: { type: string, format: uuid } }
+        - { name: hasPaid,   in: query, schema: { type: boolean, example: true } }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Parishes]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParishCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /parish/paid-parishes:
+    get:
+      tags: [Parishes]
+      summary: All parishes with hasPaid=true
+      responses: { "200": { description: OK } }
+
+  /parish/{parishId}:
+    parameters:
+      - { name: parishId, in: path, required: true, schema: { type: string, format: uuid, example: "b1780aa0-792d-4c8b-868c-f3cee35a7357" } }
+    get:
+      tags: [Parishes]
+      responses: { "200": { description: OK } }
+    put:
+      tags: [Parishes]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              example: { hasPaid: true }
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Parishes]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  /parish/{parishId}/users:
+    parameters:
+      - { name: parishId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Parishes]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  /parish/{parishId}/payments:
+    parameters:
+      - { name: parishId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  # ---------- PAYMENT (cross-cutting) ----------
+  /payment:
+    get:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: parishId, in: query, schema: { type: string, format: uuid } }
+        - { name: aydId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, confirmed, reversed] } }
+      responses: { "200": { description: OK } }
+
+  /payment/{paymentId}/status:
+    parameters:
+      - { name: paymentId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              example: { status: "reversed" }
+      responses: { "200": { description: OK } }
+
+  /payment/{paymentId}:
+    parameters:
+      - { name: paymentId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- EVENTS ----------
+  /event:
+    get:
+      tags: [Events]
+      parameters:
+        - { name: deaneryId, in: query, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Events]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventCreateRequest' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/EventCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /event/adcEvents:
+    get:
+      tags: [Events]
+      summary: Archdiocesan-level events only
+      responses: { "200": { description: OK } }
+
+  /event/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Events]
+      responses: { "200": { description: OK } }
+    put:
+      tags: [Events]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Events]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- EXECUTIVES ----------
+  /executive:
+    get:
+      tags: [Executives]
+      parameters:
+        - { name: deaneryId, in: query, schema: { type: string, format: uuid } }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Executives]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExecutiveCreateRequest' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ExecutiveCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /executive/adcExecutives:
+    get:
+      tags: [Executives]
+      summary: Archdiocesan executives only
+      responses: { "200": { description: OK } }
+
+  /executive/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get: { tags: [Executives], responses: { "200": { description: OK } } }
+    put:
+      tags: [Executives]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Executives]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- CHAPLAINS ----------
+  /chaplain:
+    get:
+      tags: [Chaplains]
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Chaplains]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName]
+              example:
+                firstName: "Paul"
+                lastName: "Ekanem"
+                title: "Rev. Fr."
+                email: "frpaul@cyonadclagos.org"
+                phoneNumber: "08044400010"
+                deaneryId: "REPLACE_WITH_DEANERY_ID"
+      responses: { "201": { description: Created } }
+
+  /chaplain/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get: { tags: [Chaplains], responses: { "200": { description: OK } } }
+    put:
+      tags: [Chaplains]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Chaplains]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- AYD ----------
+  /ayd:
+    get:
+      tags: [AYD]
+      responses: { "200": { description: OK } }
+    post:
+      tags: [AYD]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AydCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /ayd/active:
+    get:
+      tags: [AYD]
+      summary: Current active AYD event
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { success: true, data: { $ref: '#/components/schemas/Ayd/example' } }
+        "404": { description: No active AYD }
+
+  /ayd/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get: { tags: [AYD], responses: { "200": { description: OK } } }
+    put:
+      tags: [AYD]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [AYD]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- DELEGATES ----------
+  /delegate:
+    get:
+      tags: [Delegates]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: aydId, in: query, schema: { type: string, format: uuid } }
+        - { name: deaneryId, in: query, schema: { type: string, format: uuid } }
+        - { name: parishId, in: query, schema: { type: string, format: uuid } }
+        - { name: gender, in: query, schema: { type: string, enum: [Male, Female] } }
+        - { name: search, in: query, schema: { type: string, example: "Okeke" } }
+      responses: { "200": { description: OK } }
+
+  /delegate/new:
+    post:
+      tags: [Delegates]
+      summary: Public self-registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelegateCreateRequest' }
+      responses:
+        "201": { description: Created }
+        "402": { description: Parish has not paid for this AYD }
+
+  /delegate/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Delegates]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Delegates]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- NEWS ----------
+  /news:
+    get: { tags: [News], responses: { "200": { description: OK } } }
+    post:
+      tags: [News]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewsCreateRequest' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/NewsCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /news/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get: { tags: [News], responses: { "200": { description: OK } } }
+    put:
+      tags: [News]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [News]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- GALLERY ----------
+  /gallery:
+    get:
+      tags: [Gallery]
+      parameters:
+        - { name: album, in: query, schema: { type: string, example: "AYD 2025" } }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Gallery]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                title: { type: string, example: "AYD 2025 Closing Mass" }
+                caption: { type: string, example: "Closing mass at the end of AYD 2025" }
+                album: { type: string, example: "AYD 2025" }
+                image: { type: string, format: binary }
+      responses: { "201": { description: Created } }
+
+  /gallery/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Gallery]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  # ---------- FEEDBACK ----------
+  /feedback:
+    get:
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [new, in_progress, resolved] } }
+      responses: { "200": { description: OK } }
+    post:
+      tags: [Feedback]
+      summary: Public feedback submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /feedback/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: OK } }
+
+  /feedback/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              example: { status: "in_progress" }
+      responses: { "200": { description: OK } }
+
+  # ---------- POLICIES ----------
+  /policy:
+    get: { tags: [Policies], responses: { "200": { description: OK } } }
+    post:
+      tags: [Policies]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PolicyCreateRequest' }
+      responses: { "201": { description: Created } }
+
+  /policy/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string, example: "code-of-conduct" } }
+    get: { tags: [Policies], responses: { "200": { description: OK } } }

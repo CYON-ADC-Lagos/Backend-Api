@@ -1,190 +1,150 @@
-const asyncHandler = require("../middlewares/async.js");
-const User = require("../models/User");
+const crypto = require("crypto");
+const asyncHandler = require("../middlewares/async");
+const ErrorResponse = require("../utils/errorResponse");
+const sendResponse = require("../utils/sendResponse");
+const logger = require("../utils/logger");
+const { parsePagination, buildPaginated } = require("../utils/pagination");
+const { signToken } = require("../middlewares/auth");
+const userService = require("../services/user.service");
+const User = require("../models/user.model");
 
-const {
-  getAllUser,
-  register,
-  getUserById,
-} = require("../services/user.service.js");
-const sendResponse = require("../utils/sendResponse.js");
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
+const hashToken = (raw) => crypto.createHash("sha256").update(raw).digest("hex");
 
-const AUTH_SECRET_KEY = process.env.Token;
+exports.register = asyncHandler(async (req, res) => {
+  const payload = { ...req.body };
+  if (req.file) payload.picture = req.file.filename;
 
-exports.getUsers = (req, res, next) => {
-  User.findAll({
-    attributes: [
-      "id",
-      "firstName",
-      "lastName",
-      "phoneNumber",
-      "email",
-      "picture",
-    ],
-    include: [
-      {
-        model: Deanery,
-        as: "Deanery",
-      },
-      {
-        model: Parish,
-        as: "Parish",
-      },
-    ],
-  })
-    .then((user) => {
-      res.status(200).json(user);
-    })
-    .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-};
-exports.getAllUser = async function (req, res, next) {
-  const users = await getAllUser(req);
-  sendResponse(res, true, 200, users);
-};
+  const user = await userService.createUser(payload);
+  const token = signToken(user);
+  return sendResponse(res, 201, { token, user }, "Registered");
+});
 
-exports.getUserById = async function (req, res, next) {
-  const { id } = req?.body;
-  const users = await getUserById({ req, id });
-  sendResponse(res, true, 200, users);
-};
+exports.loginUser = asyncHandler(async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await userService.findByEmail(email);
+  if (!user) return next(new ErrorResponse("Invalid credentials", 401));
 
-exports.register = (req, res, next) => {
-  const { FirstName, LastName, Email, Password, PhoneNumber, DeaneryId } =
-    req?.body;
-  if (
-    !firstName ||
-    !lastName ||
-    !email ||
-    !password ||
-    !phoneNumber ||
-    !roleId
-  ) {
-    res.status(400).json({ msg: "All Fields are required" });
-  } else {
-    User.findOne({
-      where: {
-        email,
-      },
-    })
-      .then((emailExist) => {
-        if (emailExist) {
-          res.status(400).json({ msg: "Email already exists" });
-        } else {
-          let hashedPassword;
-          try {
-            const salt = bcrypt.genSaltSync(10);
-            hashedPassword = bcrypt.hashSync(Password, salt);
-          } catch (error) {
-            throw error;
-          }
-          let picture;
-          if (req.file) {
-            picture = req.file.path;
-            console.log(req.file.path);
-          }
-          User.create({
-            firstName,
-            email,
-            lastName,
-            phoneNumber,
-            password: hashedPassword,
-            deaneryId,
-            parishId,
-            roleId,
-            picture,
-          })
-            .then((user) => {
-              jwt.sign(
-                { id: user.id, roleId: user.roleId },
-                AUTH_SECRET_KEY,
-                { expiresIn: "5h" },
-                (err, token) => {
-                  User.findOne({
-                    where: {
-                      id: user.id,
-                    },
-                  })
-                    .then((newUser) => {
-                      newUser["token"] = token;
-                      const response = {
-                        token: token,
-                        id: newUser.id,
-                        firstName: newUser.firstName,
-                        lastName: newUser.lastName,
-                        email: newUser.email,
-                        phoneNumber: newUser.phoneNumber,
-                      };
-                      if (newUser.deanery) {
-                        response.deanery = newUser.Deanery.name;
-                      }
-                      if (newUser.Parish) {
-                        response.parish = newUser.Parish.name;
-                      }
-                      res.status(200).json(response);
-                    })
-                    .catch((err) => {
-                      res.status(400).json({ msg: err.message });
-                    });
-                }
-              );
-            })
-            .catch((err) =>
-              res.status(400).json({ msg: err.message || "Not created" })
-            );
-        }
-      })
+  const ok = await userService.verifyPassword(password, user.password);
+  if (!ok) return next(new ErrorResponse("Invalid credentials", 401));
 
-      .catch((err) => {
-        console.log(err);
-      });
+  const token = signToken(user);
+  const fullUser = await User.findByPk(user.id, {
+    attributes: userService.PUBLIC_ATTRS,
+    include: userService.publicInclude,
+  });
+  return sendResponse(res, 200, { token, user: fullUser }, "Login successful");
+});
+
+exports.getUsers = asyncHandler(async (req, res) => {
+  const { page, limit, offset } = parsePagination(req.query);
+  const result = await User.findAndCountAll({
+    attributes: userService.PUBLIC_ATTRS,
+    include: userService.publicInclude,
+    limit,
+    offset,
+    order: [["createdAt", "DESC"]],
+  });
+  return sendResponse(res, 200, buildPaginated(result, { page, limit }));
+});
+
+exports.getUserById = asyncHandler(async (req, res, next) => {
+  const user = await User.findByPk(req.params.id, {
+    attributes: userService.PUBLIC_ATTRS,
+    include: userService.publicInclude,
+  });
+  if (!user) return next(new ErrorResponse("User not found", 404));
+  return sendResponse(res, 200, user);
+});
+
+exports.getMe = asyncHandler(async (req, res) => {
+  const user = await User.findByPk(req.user.id, {
+    attributes: userService.PUBLIC_ATTRS,
+    include: userService.publicInclude,
+  });
+  return sendResponse(res, 200, user);
+});
+
+exports.updateUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findByPk(req.params.id);
+  if (!user) return next(new ErrorResponse("User not found", 404));
+
+  const isSelf = req.user.id === user.id;
+  const isAdmin = req.user.Role?.name === "Admin";
+  if (!isSelf && !isAdmin) return next(new ErrorResponse("Forbidden", 403));
+
+  const updates = { ...req.body };
+  if (req.file) updates.picture = req.file.filename;
+  if (!isAdmin) {
+    delete updates.roleId;
+    delete updates.isActive;
   }
-};
 
-exports.loginUser = (req, res, next) => {
-  console.log(req.body, "see");
-  const { email, password } = req?.body;
-  if (email && password) {
-    User.findOne({
-      where: {
-        email,
-      },
-    }).then((user) => {
-      if (user) {
-        let correctPassword;
-        correctPassword = bcrypt.compareSync(password, user.password);
-        if (correctPassword) {
-          jwt.sign(
-            { id: user.id, roleId: user.roleId },
-            AUTH_SECRET_KEY,
-            { expiresIn: "5h" },
-            (err, token) => {
-              const response = {
-                token: token,
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phoneNumber: user.phoneNumber,
-                deanery: user.Deanery,
-                parish: user.Parish,
-              };
-              if (user.Deanery) {
-                response.deanery = user.Deanery.name;
-              }
-              if (user.Parish) {
-                response.parish = user.Parish.name;
-              }
-              console.log(response);
-              res.status(200).json(response);
-            }
-          );
-        } else {
-          res.status(401).json({ msg: "Incorrect Password" });
-        }
-      } else {
-        res.status(400).json({ msg: "User does not Exist" });
-      }
-    });
-  } else {
-    res.status(400).json({ msg: "Bad Request" });
+  await user.update(updates);
+  const fresh = await User.findByPk(user.id, {
+    attributes: userService.PUBLIC_ATTRS,
+    include: userService.publicInclude,
+  });
+  return sendResponse(res, 200, fresh, "User updated");
+});
+
+exports.deleteUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findByPk(req.params.id);
+  if (!user) return next(new ErrorResponse("User not found", 404));
+  await user.destroy();
+  return sendResponse(res, 200, null, "User deleted");
+});
+
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const user = await userService.findByEmail(req.body.email);
+  // Always respond 200 so callers can't enumerate accounts.
+  const response = sendResponse(
+    res,
+    200,
+    null,
+    "If an account exists for that email, a reset link has been sent."
+  );
+  if (!user) return response;
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  await user.update({
+    resetTokenHash: hashToken(rawToken),
+    resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+  });
+
+  // Integration point for an email provider. Logged for now.
+  logger.info(
+    { userId: user.id, resetToken: rawToken },
+    "Password reset token issued (deliver via email)"
+  );
+  return response;
+});
+
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  const { token, password } = req.body;
+  const user = await User.findOne({
+    where: { resetTokenHash: hashToken(token) },
+  });
+  if (!user || !user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
+    return next(new ErrorResponse("Invalid or expired reset token", 400));
   }
-};
+
+  await user.update({
+    password: await userService.hashPassword(password),
+    resetTokenHash: null,
+    resetTokenExpiresAt: null,
+  });
+  return sendResponse(res, 200, null, "Password reset");
+});
+
+exports.changePassword = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findByPk(req.user.id);
+  if (!user) return next(new ErrorResponse("User not found", 404));
+
+  const ok = await userService.verifyPassword(currentPassword, user.password);
+  if (!ok) return next(new ErrorResponse("Current password is incorrect", 401));
+
+  await user.update({ password: await userService.hashPassword(newPassword) });
+  return sendResponse(res, 200, null, "Password changed");
+});

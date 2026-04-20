@@ -1,10 +1,13 @@
-const sendResponse = (res, success, statusCode, data, message) => {
-  return res.status(statusCode).json({
-    success,
-    message,
-    count: data && data.length > 1 ? data.length : undefined,
-    data: data ? data : undefined,
-  });
+const sendResponse = (res, statusCode, data, message) => {
+  const payload = {
+    success: statusCode >= 200 && statusCode < 300,
+    message: message || undefined,
+  };
+  if (data !== undefined && data !== null) {
+    payload.data = data;
+    if (Array.isArray(data)) payload.count = data.length;
+  }
+  return res.status(statusCode).json(payload);
 };
 
 module.exports = sendResponse;

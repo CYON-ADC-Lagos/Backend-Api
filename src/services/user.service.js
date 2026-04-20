@@ -1,65 +1,72 @@
-const User = require("../models/User");
-const ErrorResponse = require("../utils/errorResponse.js");
-const AUTH_SECRET_KEY = "CYONLAGOSAYD2023";
-var bcrypt = require("bcryptjs");
-var jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const User = require("../models/user.model");
+const Role = require("../models/role.model");
+const Deanery = require("../models/deanery.model");
+const Parish = require("../models/parish.model");
+const ErrorResponse = require("../utils/errorResponse");
 
-exports.getAllUser = async function () {
-  try {
-    const allUsers = await User.findAll();
-    return allUsers;
-  } catch (e) {
-    // Log Errors
-    throw new ErrorResponse("Error occured", 404);
-  }
+const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+
+const PUBLIC_ATTRS = [
+  "id",
+  "firstName",
+  "lastName",
+  "email",
+  "phoneNumber",
+  "picture",
+  "baptismalName",
+  "membershipId",
+  "position",
+  "isActive",
+  "deaneryId",
+  "parishId",
+  "roleId",
+  "createdAt",
+  "updatedAt",
+];
+
+const publicInclude = [
+  { model: Role, attributes: ["id", "name"] },
+  { model: Deanery, attributes: ["id", "name"] },
+  { model: Parish, attributes: ["id", "name"] },
+];
+
+const hashPassword = (plain) => bcrypt.hash(plain, SALT_ROUNDS);
+const verifyPassword = (plain, hashed) => bcrypt.compare(plain, hashed);
+
+const findByEmail = (email) => User.findOne({ where: { email } });
+
+const createUser = async (data) => {
+  const existing = await findByEmail(data.email);
+  if (existing) throw new ErrorResponse("Email already registered", 409);
+
+  const role = await Role.findByPk(data.roleId);
+  if (!role) throw new ErrorResponse("Invalid roleId", 400);
+
+  const user = await User.create({
+    ...data,
+    password: await hashPassword(data.password),
+  });
+
+  return User.findByPk(user.id, {
+    attributes: PUBLIC_ATTRS,
+    include: publicInclude,
+  });
 };
 
-exports.register = async function (query) {
-  const { firstName, lastName, email, password, phoneNumber, deaneryId } =
-    query;
-  if (
-    !firstName ||
-    !lastName ||
-    !password ||
-    !email ||
-    !phoneNumber ||
-    !deaneryId
-  ) {
-    return next(new ErrorResponse(`Please fill in all fields`, 400));
-  }
-
-  const isRegistered = await User.findOne({ email });
-
-  if (isRegistered) {
-    return next(new ErrorResponse("That email is already registered", 400));
-  } else {
-    let hashedPassword;
-    try {
-      const salt = bcrypt.genSaltSync(10);
-      hashedPassword = bcrypt.hashSync(Password, salt);
-    } catch (error) {
-      throw error;
-    }
-  }
-  const user = await new model({
-    email,
-    firstName,
-    lastName,
-    password: hashedPassword,
-    role,
-    phoneNumber,
-    deaneryId,
-  }).save();
-
-  return user;
+const toPublicJson = (user) => {
+  if (!user) return null;
+  const u = user.toJSON ? user.toJSON() : user;
+  delete u.password;
+  return u;
 };
 
-exports.getUserById = async function ({ id }) {
-  try {
-    const user = await User.findByPk(id);
-    return user;
-  } catch (e) {
-    // Log Errors
-    throw new ErrorResponse("Error occured", 404);
-  }
+module.exports = {
+  PUBLIC_ATTRS,
+  publicInclude,
+  hashPassword,
+  verifyPassword,
+  findByEmail,
+  createUser,
+  toPublicJson,
 };

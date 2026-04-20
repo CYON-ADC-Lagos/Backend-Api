@@ -1,168 +1,104 @@
+const asyncHandler = require("../middlewares/async");
+const ErrorResponse = require("../utils/errorResponse");
+const sendResponse = require("../utils/sendResponse");
+const { parsePagination, buildPaginated } = require("../utils/pagination");
 const Deanery = require("../models/deanery.model");
-const Role = require("../models/role.model");
-const jwt = require('jsonwebtoken');
+const Parish = require("../models/parish.model");
+const User = require("../models/user.model");
+const Event = require("../models/event.model");
+const Executive = require("../models/executive.model");
 
-const AUTH_SECRET_KEY = process.env.Token;
+const PARISH_ATTRS = ["id", "name", "email", "location", "meetingDay", "time", "hasPaid"];
+const USER_ATTRS = ["id", "firstName", "lastName", "email", "phoneNumber"];
 
-exports.getDeaneries = (req, res, next) => {
-  Deanery.findAll()
-    .then((deaneries) => {
-      res.status(200).json(deaneries);
-    })
-    .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-};
+exports.getDeaneries = asyncHandler(async (req, res) => {
+  const { page, limit, offset } = parsePagination(req.query);
+  const result = await Deanery.findAndCountAll({
+    limit,
+    offset,
+    order: [["name", "ASC"]],
+  });
+  return sendResponse(res, 200, buildPaginated(result, { page, limit }));
+});
 
+exports.getDeanery = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  return sendResponse(res, 200, deanery);
+});
 
-exports.createDeanery = (req, res, next) => {
-  const { name, meetingDay, time, email, phoneNumber,
-          youtube, facebook, instagram, twitter,} = req?.body;
-  let token = req.headers.token;
-  let role = "0";
-  if ( email && name ) {
-    jwt.verify(token, AUTH_SECRET_KEY, (err, decoded) => {
-      if (!(err) && decoded) {
-        const { id, roleId } = decoded;
-        if (roleId) {
-          role = roleId;
-        }
-      } 
-    });
-    Role.findOne({
-      where: {
-        id: role
-      }
-    })
-      .then((roleExists) => {
-        console.log(roleExists.name)
-        if (roleExists && roleExists.name !== "Member") {
-          Deanery.findOne({
-              where: {
-                  email,
-              },
-          })
-            .then((emailExists) => {
-                if (emailExists) {
-                    res.status(400).json({ msg: "Email already exists" });
-                  } else {
-                    let banner;
-                    if (req.file) {
-                      banner = req.file.path;
-                    }
-                    Deanery.create({
-                        name,
-                        meetingDay,
-                        time,
-                        email,
-                        phoneNumber,
-                        facebook,
-                        youtube,
-                        instagram,
-                        twitter,
-                        banner,
-                    })
-                      .then((deanery) => {
-                        res.status(200).json(deanery)
-                      })
-                      .catch((err) => {
-                        res.status(400).json({ msg: err.message || "Not created" })
-                      })
-                  }
-            })
-            .catch((err) => {
-                console.log(err);
-              });
-            } else {
-              res.status(403).json({ msg: "Action Not Allowed" });
-            }
-          })
-        }
-      }
+exports.createDeanery = asyncHandler(async (req, res) => {
+  const data = { ...req.body };
+  if (req.file) data.banner = req.file.filename;
+  const deanery = await Deanery.create(data);
+  return sendResponse(res, 201, deanery, "Deanery created");
+});
 
+exports.updateDeanery = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const updates = { ...req.body };
+  if (req.file) updates.banner = req.file.filename;
+  await deanery.update(updates);
+  return sendResponse(res, 200, deanery, "Deanery updated");
+});
 
-exports.getParishes = (req, res, next) => {
-  console.log(req.params);
-  Deanery.findOne({
-    where: {
-      id: req.params.deaneryId
-    }
-  })
-    .then((deanery) => {
-    deanery.getParishes({
-      attributes: [
-        'id',
-        'name',
-        'email',
-        'location',
-        'meetingDay',
-        'time',
-        ],
-    })
-      .then((parishes) => {
-        res.status(200).json(parishes);
-      })
-      .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-  })
-  .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-}
+exports.deleteDeanery = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  await deanery.destroy();
+  return sendResponse(res, 200, null, "Deanery deleted");
+});
 
+exports.getParishes = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const parishes = await Parish.findAll({
+    where: { deaneryId: deanery.id },
+    attributes: PARISH_ATTRS,
+    order: [["name", "ASC"]],
+  });
+  return sendResponse(res, 200, parishes);
+});
 
-exports.getUsers = (req, res, next) => {
-  console.log(req.params);
-  Deanery.findOne({
-    where: {
-      id: req.params.deaneryId
-    }
-  })
-    .then((deanery) => {
-      deanery.getUsers({
-        attributes: [
-          'id',
-          'firstName',
-          'lastName',
-          'phoneNumber',
-          'email'
-          ],
-      })
-        .then((users) => {
-          res.status(200).json(users);
-        })
-        .catch((err) => res.status(400).json({ msg: "Failed", error: err }));
-  })
-  .catch((err) => res.status(400).json({ msg: "Failed", error: err }));
-}
+exports.getPaidParishes = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const parishes = await Parish.findAll({
+    where: { deaneryId: deanery.id, hasPaid: true },
+    attributes: PARISH_ATTRS,
+    order: [["name", "ASC"]],
+  });
+  return sendResponse(res, 200, parishes);
+});
 
+exports.getUsers = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const users = await User.findAll({
+    where: { deaneryId: deanery.id },
+    attributes: USER_ATTRS,
+    order: [["lastName", "ASC"]],
+  });
+  return sendResponse(res, 200, users);
+});
 
-exports.getEvents = (req, res, next) => {
-  console.log(req.params.deaneryId);
-  Deanery.findOne({
-    where: {
-      id: req.params.deaneryId
-    }
-  })
-    .then((deanery) => {
-    deanery.getEvents()
-      .then((events) => {
-        res.status(200).json(events);
-      })
-      .catch((err) => res.status(400).json({ msg: "Event not Found", error: err }));
-  })
-  .catch((err) => res.status(400).json({ msg: "Deanery Not Found", error: err }));
-}
+exports.getEvents = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const events = await Event.findAll({
+    where: { deaneryId: deanery.id },
+    order: [["date", "DESC"]],
+  });
+  return sendResponse(res, 200, events);
+});
 
-
-exports.getExecutives = (req, res, next) => {
-  console.log(req.params.deaneryId);
-  Deanery.findOne({
-    where: {
-      id: req.params.deaneryId
-    }
-  })
-    .then((deanery) => {
-    deanery.getExecutives()
-      .then((executives) => {
-        res.status(200).json(executives);
-      })
-      .catch((err) => res.status(400).json({ msg: "Executive not Found", error: err }));
-  })
-  .catch((err) => res.status(400).json({ msg: "Deanery Not Found", error: err }));
-}
+exports.getExecutives = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.params.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Deanery not found", 404));
+  const executives = await Executive.findAll({
+    where: { deaneryId: deanery.id },
+    order: [["order", "ASC"], ["lastName", "ASC"]],
+  });
+  return sendResponse(res, 200, executives);
+});

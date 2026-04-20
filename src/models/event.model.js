@@ -20,7 +20,7 @@ const Event = sequelize.define("Event", {
   },
   bannerImage: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   date: {
     type: DataTypes.DATE,

@@ -1,105 +1,82 @@
+const asyncHandler = require("../middlewares/async");
+const ErrorResponse = require("../utils/errorResponse");
+const sendResponse = require("../utils/sendResponse");
+const { parsePagination, buildPaginated } = require("../utils/pagination");
 const Parish = require("../models/parish.model");
-const Role = require("../models/role.model");
-const jwt = require('jsonwebtoken');
 const Deanery = require("../models/deanery.model");
+const User = require("../models/user.model");
 
-const AUTH_SECRET_KEY = process.env.Token;
+const USER_ATTRS = ["id", "firstName", "lastName", "email", "phoneNumber"];
 
-exports.getParishes = (req, res, next) => {
-  Parish.findAll()
-    .then((parishes) => {
-      res.status(200).json(parishes);
-    })
-    .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-};
+exports.getParishes = asyncHandler(async (req, res) => {
+  const { page, limit, offset } = parsePagination(req.query);
+  const where = {};
+  if (req.query.deaneryId) where.deaneryId = req.query.deaneryId;
+  if (req.query.hasPaid !== undefined) where.hasPaid = req.query.hasPaid === "true";
 
+  const result = await Parish.findAndCountAll({
+    where,
+    limit,
+    offset,
+    order: [["name", "ASC"]],
+    include: [{ model: Deanery, attributes: ["id", "name"] }],
+  });
+  return sendResponse(res, 200, buildPaginated(result, { page, limit }));
+});
 
-exports.createParish = (req, res, next) => {
-  console.log(req.body, "see");
-  const { name, meetingDay, time, email, deaneryId, location, } = req?.body;
-  let token = req.headers.token;
-  let role = "0";
-  if (
-    email &&
-    name && 
-    deaneryId &&
-    location &&
-    meetingDay &&
-    time
-    ) {
-      jwt.verify(token, AUTH_SECRET_KEY, (err, decoded) => {
-        if (!(err) && decoded) {
-          const { id, roleId } = decoded;
-          if (roleId  !== undefined) {
-            role = roleId;
-          }
-        }
-      });
-    Role.findOne({
-      where: {
-        id: role
-      }
-    })
-      .then((roleExists) => {
-        if (roleExists && roleExists.name !== "Member") {
-          Parish.findOne({
-              where: {
-                  email,
-              },
-          })
-            .then((emailExists) => {
-                if (emailExists) {
-                    res.status(400).json({ msg: "Email already exists" });
-                  } else {
-                    Parish.create({
-                        name,
-                        meetingDay,
-                        time,
-                        email,
-                        deaneryId,
-                        location
-                    })
-                      .then((parish) => {
-                        res.status(400).json(parish)
-                      })
-                      .catch((err) => {
-                        res.status(400).json({ msg: err.message || "Not created" })
-                      })
-                  }
-            })
-            .catch((err) => {
-                console.log(err);
-              });
-            } else {
-              res.status(403).json({ msg: "Action Not Allowed" });
-            }
-          })
-        } else {
-          res.status(400).json({ msg: "Incomplete Information" })
-        }
-}
+exports.getPaidParishes = asyncHandler(async (_req, res) => {
+  const parishes = await Parish.findAll({
+    where: { hasPaid: true },
+    order: [["name", "ASC"]],
+    include: [{ model: Deanery, attributes: ["id", "name"] }],
+  });
+  return sendResponse(res, 200, parishes);
+});
 
+exports.getParish = asyncHandler(async (req, res, next) => {
+  const parish = await Parish.findByPk(req.params.parishId, {
+    include: [{ model: Deanery, attributes: ["id", "name"] }],
+  });
+  if (!parish) return next(new ErrorResponse("Parish not found", 404));
+  return sendResponse(res, 200, parish);
+});
 
-exports.getUsers = (req, res, next) => {
-  Parish.findOne({
-    where: {
-      id: req.params.parishId
-    }
-  })
-    .then((parish) => {
-    parish.getUsers({
-      attributes: [
-        'id',
-        'firstName',
-        'lastName',
-        'phoneNumber',
-        'email',
-        ],
-    })
-      .then((users) => {
-        res.status(200).json(users);
-      })
-      .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-  })
-  .catch((err) => res.status(400).json({ msg: "failed", error: err }));
-}
+exports.createParish = asyncHandler(async (req, res, next) => {
+  const deanery = await Deanery.findByPk(req.body.deaneryId);
+  if (!deanery) return next(new ErrorResponse("Invalid deaneryId", 400));
+
+  const duplicate = await Parish.findOne({ where: { email: req.body.email } });
+  if (duplicate) return next(new ErrorResponse("Parish email already exists", 409));
+
+  const parish = await Parish.create(req.body);
+  return sendResponse(res, 201, parish, "Parish created");
+});
+
+exports.updateParish = asyncHandler(async (req, res, next) => {
+  const parish = await Parish.findByPk(req.params.parishId);
+  if (!parish) return next(new ErrorResponse("Parish not found", 404));
+  if (req.body.deaneryId) {
+    const d = await Deanery.findByPk(req.body.deaneryId);
+    if (!d) return next(new ErrorResponse("Invalid deaneryId", 400));
+  }
+  await parish.update(req.body);
+  return sendResponse(res, 200, parish, "Parish updated");
+});
+
+exports.deleteParish = asyncHandler(async (req, res, next) => {
+  const parish = await Parish.findByPk(req.params.parishId);
+  if (!parish) return next(new ErrorResponse("Parish not found", 404));
+  await parish.destroy();
+  return sendResponse(res, 200, null, "Parish deleted");
+});
+
+exports.getUsers = asyncHandler(async (req, res, next) => {
+  const parish = await Parish.findByPk(req.params.parishId);
+  if (!parish) return next(new ErrorResponse("Parish not found", 404));
+  const users = await User.findAll({
+    where: { parishId: parish.id },
+    attributes: USER_ATTRS,
+    order: [["lastName", "ASC"]],
+  });
+  return sendResponse(res, 200, users);
+});
