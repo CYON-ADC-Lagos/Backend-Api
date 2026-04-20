@@ -1,23 +1,32 @@
 {
   "development": {
-    "username": "neondb_owner",
-    "password": "npg_8xm4HEgleMiU",
-    "database": "neondb",
-    "host": "postgresql://neondb_owner:npg_8xm4HEgleMiU@ep-soft-dawn-abraafth-pooler.eu-west-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require",
-    "dialect": "postgres"
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   },
   "test": {
-    "username": "neondb_owner",
-    "password": "npg_8xm4HEgleMiU",
-    "database": "neondb",
-    "host": "postgresql://neondb_owner:npg_8xm4HEgleMiU@ep-soft-dawn-abraafth-pooler.eu-west-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require",
-    "dialect": "postgres"
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   },
   "production": {
-    "username": "neondb_owner",
-    "password": "npg_8xm4HEgleMiU",
-    "database": "neondb",
-    "host": "postgresql://neondb_owner:npg_8xm4HEgleMiU@ep-soft-dawn-abraafth-pooler.eu-west-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require",
-    "dialect": "postgres"
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
   }
 }
