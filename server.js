@@ -323,13 +323,13 @@ const syncStrategy = () => {
 
 const start = async () => {
   try {
-    // Skip authenticate/sync/seed on Vercel — too slow for serverless cold starts
+    await sequelize.authenticate();
+    logger.info("Database connection OK");
+    await sequelize.sync(syncStrategy());
+    logger.info("Database synced");
+    await seed();
+
     if (!IS_VERCEL) {
-      await sequelize.authenticate();
-      logger.info("Database connection OK");
-      await sequelize.sync(syncStrategy());
-      logger.info("Database synced");
-      await seed();
       app.listen(PORT, () => logger.info({ port: PORT }, "Server listening"));
     }
   } catch (err) {
