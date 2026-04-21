@@ -303,16 +303,33 @@ const syncStrategy = () => {
   return {};
 };
 
+// const start = async () => {
+//   try {
+//     await sequelize.authenticate();
+//     logger.info("Database connection OK");
+//     await sequelize.sync(syncStrategy());
+//     logger.info("Database synced");
+//     await seed();
+
+//     // Don't call app.listen() on Vercel — it manages the server itself
+//     if (!IS_VERCEL) {
+//       app.listen(PORT, () => logger.info({ port: PORT }, "Server listening"));
+//     }
+//   } catch (err) {
+//     logger.error({ err }, "Failed to start server");
+//     process.exit(1);
+//   }
+// };
+
 const start = async () => {
   try {
-    await sequelize.authenticate();
-    logger.info("Database connection OK");
-    await sequelize.sync(syncStrategy());
-    logger.info("Database synced");
-    await seed();
-
-    // Don't call app.listen() on Vercel — it manages the server itself
+    // Skip authenticate/sync/seed on Vercel — too slow for serverless cold starts
     if (!IS_VERCEL) {
+      await sequelize.authenticate();
+      logger.info("Database connection OK");
+      await sequelize.sync(syncStrategy());
+      logger.info("Database synced");
+      await seed();
       app.listen(PORT, () => logger.info({ port: PORT }, "Server listening"));
     }
   } catch (err) {
