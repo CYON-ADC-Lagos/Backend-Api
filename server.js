@@ -252,8 +252,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdnjs.cloudflare.com",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
         imgSrc: ["'self'", "data:", "https:"],
       },
     },
@@ -272,10 +276,29 @@ app.get("/health", (_req, res) =>
     .json({ success: true, status: "ok", time: new Date().toISOString() }),
 );
 
+// try {
+//   const openapiDoc = YAML.load(path.join(__dirname, "openapi.yaml"));
+//   app.get("/docs.json", (_req, res) => res.json(openapiDoc));
+//   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDoc));
+// } catch (err) {
+//   logger.warn({ err: err.message }, "OpenAPI docs unavailable");
+// }
+
 try {
   const openapiDoc = YAML.load(path.join(__dirname, "openapi.yaml"));
   app.get("/docs.json", (_req, res) => res.json(openapiDoc));
-  app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDoc));
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(openapiDoc, {
+      customCssUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui.min.css",
+      customJs: [
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-bundle.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-standalone-preset.min.js",
+      ],
+    }),
+  );
 } catch (err) {
   logger.warn({ err: err.message }, "OpenAPI docs unavailable");
 }
