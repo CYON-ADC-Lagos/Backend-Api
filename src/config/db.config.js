@@ -67,10 +67,14 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     },
   },
   pool: {
-    max: 10,
+    // max: 10,
+    // min: 0,
+    // acquire: 30000,
+    // idle: 10000,
+    max: 5,
     min: 0,
-    acquire: 30000,
-    idle: 10000,
+    acquire: 10000,
+    idle: 1000,
   },
   logging: false,
 });
