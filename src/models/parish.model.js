@@ -25,7 +25,7 @@ const Parish = sequelize.define("Parish", {
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     unique: true,
   },
   hasPaid: {
