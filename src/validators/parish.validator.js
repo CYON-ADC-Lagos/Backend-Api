@@ -2,12 +2,15 @@ const Joi = require("joi");
 
 const createParishSchema = Joi.object({
   name: Joi.string().trim().min(2).max(120).required(),
-  email: Joi.string().email().lowercase().trim().required(),
+  email: Joi.string().email().lowercase().trim().optional().allow("", null),
   location: Joi.string().trim().max(240).optional().allow(""),
   deaneryId: Joi.string().uuid().required(),
   meetingDay: Joi.string().trim().max(40).optional().allow(""),
   time: Joi.string().trim().max(20).optional().allow(""),
-  hasPaid: Joi.boolean().truthy(1, "1", "true").falsy(0, "0", "false").optional(),
+  hasPaid: Joi.boolean()
+    .truthy(1, "1", "true")
+    .falsy(0, "0", "false")
+    .optional(),
 });
 
 const updateParishSchema = Joi.object({
