@@ -46,10 +46,12 @@ exports.createParish = asyncHandler(async (req, res, next) => {
   const deanery = await Deanery.findByPk(req.body.deaneryId);
   if (!deanery) return next(new ErrorResponse("Invalid deaneryId", 400));
 
-  // if (req.body.email) {
-  //   const d = await Parish.findOne({ where: { email: req.body.email } });
-  //   if (d) return next(new ErrorResponse("Parish email already exists", 409));
-  // }
+  if (req.body.email) {
+    const duplicateEmail = await Parish.findOne({ where: { email: req.body.email } });
+    if (duplicateEmail) {
+      return next(new ErrorResponse("Parish email already exists", 409));
+    }
+  }
 
   const duplicate = await Parish.findOne({ where: { name: req.body.name } });
   if (duplicate)
@@ -65,6 +67,12 @@ exports.updateParish = asyncHandler(async (req, res, next) => {
   if (req.body.deaneryId) {
     const d = await Deanery.findByPk(req.body.deaneryId);
     if (!d) return next(new ErrorResponse("Invalid deaneryId", 400));
+  }
+  if (req.body.email && req.body.email !== parish.email) {
+    const duplicateEmail = await Parish.findOne({ where: { email: req.body.email } });
+    if (duplicateEmail) {
+      return next(new ErrorResponse("Parish email already exists", 409));
+    }
   }
   await parish.update(req.body);
   return sendResponse(res, 200, parish, "Parish updated");
