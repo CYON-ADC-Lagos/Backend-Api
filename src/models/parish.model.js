@@ -16,6 +16,7 @@ const Parish = sequelize.define("Parish", {
   },
   location: {
     type: DataTypes.STRING,
+    allowNull: true,
   },
   meetingDay: {
     type: DataTypes.STRING,
@@ -25,8 +26,8 @@ const Parish = sequelize.define("Parish", {
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
+    allowNull: true,
+    unique: false,
   },
   hasPaid: {
     type: DataTypes.BOOLEAN,

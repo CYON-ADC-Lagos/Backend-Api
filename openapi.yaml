@@ -240,7 +240,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        email: { type: string, format: email }
+        email: { type: string, format: email, nullable: true }
         location: { type: string, nullable: true }
         meetingDay: { type: string, nullable: true }
         time: { type: string, nullable: true }
@@ -249,7 +249,7 @@ components:
 
     ParishCreateRequest:
       type: object
-      required: [name, email, deaneryId]
+      required: [name, deaneryId]
       example:
         name: "Holy Cross Cathedral, Lagos"
         email: "holycross@cyonadclagos.org"
@@ -260,7 +260,7 @@ components:
         hasPaid: false
       properties:
         name: { type: string }
-        email: { type: string, format: email }
+        email: { type: string, format: email, nullable: true }
         location: { type: string }
         meetingDay: { type: string }
         time: { type: string }
